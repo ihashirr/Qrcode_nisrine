@@ -7,19 +7,30 @@ import { PRODUCTS_JSON } from "../lib/paths";
  * category, never database IDs. Edit that file to change what gets generated.
  */
 export interface Product {
-  /** Custom Code128 payload printed on the label, e.g. "INT-M1001". */
+  /** Barcode payload printed on the sticker, e.g. "INT-M1001" (Code128) or a 12/13-digit GTIN (EAN). */
   internalBarcode: string;
   /** Display category, e.g. "Mix Sweet" or "Pastries". */
   category: string;
+  /** Optional per-product ingredients override (falls back to defaults.ingredients). */
+  ingredients?: string;
+  /** Optional per-product Arabic ingredients override. */
+  ingredientsAr?: string;
 }
 
 export interface Company {
   name: string;
   shortCode: string;
+  /** Secondary brand line printed under the logo, e.g. "Sweets & Bakery". */
+  tagline: string;
+  contact: {
+    mobiles: string[];
+    location: string;
+  };
 }
 
 interface ProductsFile {
   company: Company;
+  defaults?: { ingredients?: string; ingredientsAr?: string };
   products: Product[];
 }
 
@@ -47,7 +58,14 @@ export function getCompany(): Company {
 }
 
 export function getProducts(): Product[] {
-  return load().products;
+  const data = load();
+  // Resolve per-product ingredient overrides against the file-level defaults
+  // here, so downstream consumers never re-implement the fallback.
+  return data.products.map((p) => ({
+    ...p,
+    ingredients: p.ingredients ?? data.defaults?.ingredients ?? "",
+    ingredientsAr: p.ingredientsAr ?? data.defaults?.ingredientsAr ?? "",
+  }));
 }
 
 /** URL-safe slug for a category name, e.g. "Mix Sweet" -> "mix-sweet". */

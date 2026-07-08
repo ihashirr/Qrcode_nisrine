@@ -17,6 +17,8 @@ async function generateProducts(products: Product[]): Promise<string[]> {
     const image = await buildLabelImage({
       categoryName: product.category,
       barcodeValue: product.internalBarcode,
+      ingredients: product.ingredients,
+      ingredientsAr: product.ingredientsAr,
     });
     const filePath = path.join(OUTPUT_DIR, fileNameFor(product));
     await fs.writeFile(filePath, image);
