@@ -1,23 +1,37 @@
 import type { FastifyInstance } from "fastify";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { CATEGORIES } from "../config/categories";
-import { generateAll } from "../scripts/generateBarcodes";
+import { getCategories, getProducts, productsByCategorySlug } from "../config/products";
+import { generateAll, generateCategory } from "../scripts/generateBarcodes";
 import { OUTPUT_DIR } from "../lib/paths";
 
 export async function barcodeRoutes(app: FastifyInstance) {
-  app.get("/api/categories", async () => CATEGORIES);
+  app.get("/api/categories", async () => getCategories());
+
+  app.get("/api/products", async () => getProducts());
 
   app.get("/api/barcodes", async () => {
     await fs.mkdir(OUTPUT_DIR, { recursive: true });
     const files = await fs.readdir(OUTPUT_DIR);
-    return files.filter((f) => f.endsWith(".png"));
+    return files.filter((f) => f.endsWith(".png")).sort();
   });
 
   app.post("/api/barcodes/generate", async (_req, reply) => {
     const files = await generateAll();
     reply.code(201);
     return { count: files.length, files: files.map((f) => path.basename(f)) };
+  });
+
+  // Per-category generation — backs the "Generate Mix Sweet" / "Generate
+  // Pastries" buttons. The :category param is a slug, e.g. "mix-sweet".
+  app.post("/api/barcodes/generate/:category", async (req, reply) => {
+    const { category } = req.params as { category: string };
+    if (productsByCategorySlug(category).length === 0) {
+      return reply.code(404).send({ error: `unknown category "${category}"` });
+    }
+    const files = await generateCategory(category);
+    reply.code(201);
+    return { category, count: files.length, files: files.map((f) => path.basename(f)) };
   });
 
   app.get("/assets/output/:filename", async (req, reply) => {

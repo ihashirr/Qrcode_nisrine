@@ -1,0 +1,21 @@
+{
+  "company": {
+    "name": "Sweets and Bakery Pistachio and Cashew L.L.C-O.P.C.",
+    "shortCode": "SBPC"
+  },
+  "products": [
+    { "internalBarcode": "INT-M1001", "category": "Mix Sweet" },
+    { "internalBarcode": "INT-M1002", "category": "Mix Sweet" },
+    { "internalBarcode": "INT-M1003", "category": "Mix Sweet" },
+    { "internalBarcode": "INT-M1004", "category": "Mix Sweet" },
+    { "internalBarcode": "INT-M1005", "category": "Mix Sweet" },
+    { "internalBarcode": "INT-M1006", "category": "Mix Sweet" },
+    { "internalBarcode": "INT-M1007", "category": "Mix Sweet" },
+    { "internalBarcode": "INT-M1008", "category": "Mix Sweet" },
+    { "internalBarcode": "INT-M1009", "category": "Mix Sweet" },
+    { "internalBarcode": "INT-P1001", "category": "Pastries" },
+    { "internalBarcode": "INT-P1002", "category": "Pastries" },
+    { "internalBarcode": "INT-P1003", "category": "Pastries" },
+    { "internalBarcode": "INT-P1004", "category": "Pastries" }
+  ]
+}

@@ -6,3 +6,36 @@ body {
   background-color: #0b0d10;
   color: #d7dbe0;
 }
+
+/* Barcode labels must reach the print pipeline undistorted. Full width +
+   object-fit: contain stops the browser from stretching the bars, which
+   would wreck scan quality. */
+.label-img {
+  width: 100%;
+  object-fit: contain;
+}
+
+@media print {
+  /* White background, drop the dark UI chrome, and lay the labels out as a
+     clean grid so the print preview shows only scannable stickers. */
+  body {
+    background-color: #ffffff;
+    color: #000000;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-sheet {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6mm;
+  }
+
+  .label-card {
+    border: none !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
