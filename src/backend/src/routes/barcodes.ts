@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { getCategories, getProducts, productsByCategorySlug } from "../config/products";
 import { generateAll, generateCategory } from "../scripts/generateBarcodes";
+import { MasterAssetError } from "../lib/composite";
 import { OUTPUT_DIR } from "../lib/paths";
 
 export async function barcodeRoutes(app: FastifyInstance) {
@@ -17,9 +18,14 @@ export async function barcodeRoutes(app: FastifyInstance) {
   });
 
   app.post("/api/barcodes/generate", async (_req, reply) => {
-    const files = await generateAll();
-    reply.code(201);
-    return { count: files.length, files: files.map((f) => path.basename(f)) };
+    try {
+      const files = await generateAll();
+      reply.code(201);
+      return { count: files.length, files: files.map((f) => path.basename(f)) };
+    } catch (err) {
+      if (err instanceof MasterAssetError) return reply.code(400).send({ error: err.message });
+      throw err;
+    }
   });
 
   // Per-category generation — backs the "Generate Mix Sweet" / "Generate
@@ -29,9 +35,14 @@ export async function barcodeRoutes(app: FastifyInstance) {
     if (productsByCategorySlug(category).length === 0) {
       return reply.code(404).send({ error: `unknown category "${category}"` });
     }
-    const files = await generateCategory(category);
-    reply.code(201);
-    return { category, count: files.length, files: files.map((f) => path.basename(f)) };
+    try {
+      const files = await generateCategory(category);
+      reply.code(201);
+      return { category, count: files.length, files: files.map((f) => path.basename(f)) };
+    } catch (err) {
+      if (err instanceof MasterAssetError) return reply.code(400).send({ error: err.message });
+      throw err;
+    }
   });
 
   app.get("/assets/output/:filename", async (req, reply) => {

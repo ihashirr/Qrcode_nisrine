@@ -1,6 +1,21 @@
+import fs from "node:fs";
+import path from "node:path";
 import sharp from "sharp";
 import { renderBarcodePng } from "./barcode";
-import { MASTER_LOGO_PATH, MASTER_PRODUCT_PATH } from "./paths";
+import { MASTER_LOGO_PATH, MASTER_PRODUCT_PATH, REPO_ROOT } from "./paths";
+
+/** Thrown when a required master asset is absent — mapped to a 400 by the API. */
+export class MasterAssetError extends Error {}
+
+function assertMasterAssets(): void {
+  const missing = [MASTER_LOGO_PATH, MASTER_PRODUCT_PATH].filter((p) => !fs.existsSync(p));
+  if (missing.length > 0) {
+    const names = missing.map((p) => path.relative(REPO_ROOT, p)).join(", ");
+    throw new MasterAssetError(
+      `Missing master asset(s): ${names}. Place master-logo.png in assets/logo/ and master-product.png in assets/product/ before generating.`
+    );
+  }
+}
 
 const CANVAS = { width: 1000, height: 1250 };
 const LOGO_BAND = { top: 40, height: 180 };
@@ -31,6 +46,8 @@ export interface BuildLabelInput {
  * this exact layout — only the barcode value and category caption change.
  */
 export async function buildLabelImage({ categoryName, barcodeValue }: BuildLabelInput): Promise<Buffer> {
+  assertMasterAssets();
+
   const [logo, photo, barcode] = await Promise.all([
     sharp(MASTER_LOGO_PATH).resize({ height: LOGO_BAND.height, fit: "inside" }).toBuffer(),
     sharp(MASTER_PRODUCT_PATH)

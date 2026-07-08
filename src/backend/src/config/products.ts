@@ -25,7 +25,21 @@ interface ProductsFile {
 
 function load(): ProductsFile {
   const raw = fs.readFileSync(PRODUCTS_JSON, "utf8");
-  return JSON.parse(raw) as ProductsFile;
+  const data = JSON.parse(raw) as ProductsFile;
+
+  // Fail loudly on bad data — a duplicate or blank barcode would silently
+  // overwrite another product's label file or emit an unscannable symbol.
+  const seen = new Set<string>();
+  for (const p of data.products ?? []) {
+    if (!p.internalBarcode?.trim() || !p.category?.trim()) {
+      throw new Error(`products.json: every product needs a non-empty internalBarcode and category (got ${JSON.stringify(p)})`);
+    }
+    if (seen.has(p.internalBarcode)) {
+      throw new Error(`products.json: duplicate internalBarcode "${p.internalBarcode}"`);
+    }
+    seen.add(p.internalBarcode);
+  }
+  return data;
 }
 
 export function getCompany(): Company {

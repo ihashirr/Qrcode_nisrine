@@ -1,3 +1,7 @@
-Place the master company logo here as `master-logo.png` (transparent background preferred).
+# Master logo
 
-This file is required by `src/backend/src/lib/composite.ts` before generation will run.
+`master-logo.png` — the official "Pistachio & Cashew" company logo (Arabic + English
+wordmark with the pistachio/cedar emblem). Composited onto the top band of every
+generated label by `src/backend/src/lib/composite.ts`.
+
+Replace this file (same name) and regenerate to rebrand every label at once.

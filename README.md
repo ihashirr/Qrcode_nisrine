@@ -10,9 +10,9 @@ Code128 barcode.
 ```
 products.json     master data source: internal barcode strings + category (no DB IDs)
 assets/
-  logo/           master-logo.png            (you provide this)
-  product/        master-product.png         (you provide this)
-  output/         generated label PNGs land here (gitignored, regenerable)
+  logo/           master-logo.png            (official company logo)
+  product/        master-product.png         (official product photo)
+  output/         the 13 generated label PNGs (committed deliverables)
 src/
   backend/        Fastify + TypeScript API and generation logic
     src/config/products.ts     loads products.json; derives categories + counts
@@ -48,12 +48,13 @@ dashboard buttons) follows automatically.
    the rendered barcode (bottom). The master assets are read once per run and reused across
    all outputs — only the barcode value and caption change per unit.
 4. **Output.** Files are written to `assets/output/` named after the internal barcode, e.g.
-   `int-m1001.png`, `int-p1004.png`. The directory is gitignored — treat it as build output.
+   `int-m1001.png`, `int-p1004.png`. The 13 labels are committed as the project's
+   deliverables and are fully regenerable from the masters + `products.json`.
 
 ## Running it
 
-Prereqs: place `master-logo.png` in `assets/logo/` and `master-product.png` in
-`assets/product/` (see the README in each folder).
+The master assets ship in the repo (`assets/logo/master-logo.png`,
+`assets/product/master-product.png`), so generation works out of the box.
 
 ```bash
 # Backend
@@ -93,6 +94,26 @@ gives a download link per asset, and has a **Print** button.
 - **Printing** — the dashboard's print stylesheet drops the dark UI chrome and renders labels
   at `width: 100%` / `object-fit: contain` so the browser never scales the barcode and ruins
   scan quality.
+
+## Master brand assets
+
+The two images in `assets/` are the master brand assets, and every generated label is a
+composite of them:
+
+- `assets/logo/master-logo.png` — the official Pistachio & Cashew logo (branding, top band)
+- `assets/product/master-product.png` — the official product photo (visual identifier,
+  middle band; cropped to remove the camera watermark)
+
+Beyond the labels themselves, these images serve as:
+
+- **Product packaging** — printed with the barcode on physical labels for both product lines
+- **Digital product catalog** — uploaded as the official visual reference for each GTIN when
+  registering in the International Barcodes Database
+- **SEO** — the database registration recommends high-quality photos to increase product
+  visibility in search engines
+
+Because compositing is centralized, swapping either master file and regenerating restyles
+all 13 labels consistently — the scanned product always presents the correct brand identity.
 
 ## Post-generation workflow
 
