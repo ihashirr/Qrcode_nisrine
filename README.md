@@ -93,3 +93,18 @@ gives a download link per asset, and has a **Print** button.
 - **Printing** — the dashboard's print stylesheet drops the dark UI chrome and renders labels
   at `width: 100%` / `object-fit: contain` so the browser never scales the barcode and ruins
   scan quality.
+
+## Post-generation workflow
+
+Generating the images is only the first step. To make the barcodes official and
+internationally searchable, the numbers move through the following lifecycle:
+
+1. **Generation** — Run this project's script to generate the unique GTIN barcode images
+   from the number series assigned to you (Mix Sweet and Pastries).
+2. **Product application** — Apply the generated barcode images to the product packaging for
+   "Mix Sweet" and "Pastries".
+3. **Registration** — Once the products are ready, submit those specific generated barcode
+   numbers to the **International Barcodes Database** for official registration.
+4. **Verification** — After you provide proof of ownership and complete the registration, the
+   database links those numbers to **Sweets and Bakery Pistachio and Cashew L.L.C-O.P.C.**,
+   making them internationally searchable.
