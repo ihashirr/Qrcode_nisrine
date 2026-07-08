@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.next/
+*.log
+*.tsbuildinfo
+
+# Generated label assets are build output, not source.
+assets/output/*.png
