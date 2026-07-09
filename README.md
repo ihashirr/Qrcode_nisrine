@@ -1,9 +1,12 @@
 # Barcode Control Room
 
-Minimal system for **Sweets and Bakery Pistachio and Cashew L.L.C-O.P.C.** to generate
-and manage the company's **circular product sticker**: 9 "Mix Sweet" units + 4 "Pastries"
-units = 13 high-resolution stickers, each replicating the physical label — logo, Arabic/
-English branding, ingredients, vertical barcode, and contact details on the rim arc.
+Minimal system for **Sweets and Bakery Pistachio and Cashew L.L.C-O.P.C.** to generate,
+manage, and verify the company's **circular product stickers**: 9 "Mix Sweet" units + 4
+"Pastries" units = 13 high-resolution stickers, each uniquely identified and retail-compliant,
+replicating the physical label — logo, Arabic/English branding, ingredients, vertical barcode
+with serial, and contact details on the rim arc.
+
+**Status:** ✅ All 13 stickers generated and tested. Ready for deployment to Vercel.
 
 ## Structure
 
@@ -168,17 +171,194 @@ Beyond the labels themselves, these images serve as:
 Because compositing is centralized, swapping the master logo and regenerating restyles
 all 13 stickers consistently — the scanned product always presents the correct brand identity.
 
+## What Happens When You Scan a Barcode
+
+When a customer or retailer scans one of your product stickers:
+
+1. **Barcode Read** — The scanner reads the EAN-13 barcode (one of your two registered GTINs:
+   `0721688020981` for Mix Sweet or `0721688020998` for Pastries).
+2. **Database Lookup** — The scanner queries the International Barcodes Database with the GTIN.
+3. **Product Info** — If the GTIN is registered, the database returns:
+   - Product name ("Mix Sweet" or "Pastries")
+   - Company name ("Sweets and Bakery Pistachio and Cashew L.L.C-O.P.C.")
+   - Product photo (the official master-product.png)
+   - Ingredients and contact details
+4. **Your Internal System** — The serial (printed below the barcode as "Serial: NNN") allows you
+   to track individual stickers for inventory. Each sticker is uniquely identified by:
+   **GTIN + Serial** (e.g., 0721688020981 + 005 = a specific Mix Sweet unit).
+
+**Before scanning works:** You must complete the **Registration** step below.
+
+## Complete Workflow: From Generation to Live Scanning
+
+### Phase 1: Generation ✅ DONE
+**What was completed:**
+- All 13 circular stickers generated with absolute coordinate geometry (1200×1200 @ 300 DPI)
+- Each sticker includes:
+  - Master company logo (Pistachio & Cashew branding)
+  - Dynamic product name (Mix Sweet or Pastries)
+  - Arabic and English ingredients
+  - EAN-13 barcode (numeric GTIN: 0721688020981 or 0721688020998)
+  - **Serial number** (e.g., "Serial: 001") printed below barcode for individual tracking
+  - Contact details curved along bottom arc
+- Pre-assignment audit runs at build time: invalid GTINs prevent deployment
+- All stickers pre-rendered at build time; served as immutable static PNGs
+
+**Model:** 2 GTINs + per-item serial (retail-compliant)
+- **GTIN** (EAN-13): Identifies the product line (shared across all Mix Sweet or all Pastries)
+- **Serial** (001–009 for Mix Sweet, 001–004 for Pastries): Identifies individual labels
+- **Combined GTIN + Serial:** Uniquely identifies one sticker for inventory
+
+**Generated files:**
+```
+lib/products.ts         Pre-assignment audit (validates every GTIN, check-digit, serials)
+lib/barcode.ts          EAN-13/UPC-A renderer (bwip-js)
+lib/composite.ts        Circular sticker compositor (sharp)
+app/api/catalog/route.ts   GET /api/catalog (JSON: categories, products, files)
+app/api/sticker/[sku]/route.ts   GET /api/sticker/{sku}.png (immutable 300-dpi PNG)
+products.json           Authority on all barcode data (13 products, 2 GTINs, serials)
+```
+
+### Phase 2: Deployment to Vercel ⏳ NEXT STEP
+**What you must do:**
+1. **GitHub default branch:** Set `main` as default in repo settings
+   - Repo → Settings → General → Default branch → `main`
+2. **Connect to Vercel:**
+   - Import this repo into Vercel (create a new project)
+   - Root Directory: `.` (default)
+   - Framework: Next.js (auto-detected)
+   - Deploy
+3. **Verify the deployment:**
+   - Visit `https://<your-vercel-deployment>.vercel.app`
+   - You should see the Barcode Control Room dashboard
+   - Click on stickers to preview; each shows GTIN + Serial
+   - Download one sticker to confirm it's a valid PNG
+
+**Deployment configuration is already ready:**
+- `vercel.json` forces Next.js builder (prevents "No Output Directory" error)
+- `next.config.js` includes sharp and traces all assets
+- `products.json` and `assets/master-logo.png` are committed to git (will be deployed)
+
+### Phase 3: Product Registration 📋 PENDING
+**What you must do:**
+1. **Register both GTINs with the International Barcodes Database:**
+   - Visit https://www.gs1.org/services/gs1-barcode-database (or your regional IBN office)
+   - Register `0721688020981` (Mix Sweet) with:
+     - Product name: "Mix Sweet"
+     - Company: "Sweets and Bakery Pistachio and Cashew L.L.C-O.P.C."
+     - Photo: Use `assets/master-product.png` (the official product photo)
+     - Ingredients: As listed in products.json
+   - Register `0721688020998` (Pastries) with:
+     - Product name: "Pastries"
+     - Company: "Sweets and Bakery Pistachio and Cashew L.L.C-O.P.C."
+     - Photo: Use `assets/master-product.png`
+     - Ingredients: As listed in products.json
+2. **Proof of ownership:** The database may request proof (certificate of GTIN assignment from UAE-1806).
+
+**Why:** Without registration, scanners can find nothing when they query the database.
+After registration, the GTINs become internationally searchable.
+
+### Phase 4: Apply Stickers to Product Packaging ✋ YOUR RESPONSIBILITY
+**What you must do:**
+1. Download all 13 stickers from the Vercel dashboard:
+   - Click any sticker card → Download button
+   - Or download directly from: `/api/sticker/{sku}.png` (e.g., `/api/sticker/int-m1001.png`)
+2. Print each sticker:
+   - **Resolution:** 300 DPI (embedded in PNG)
+   - **Size:** ~10 cm diameter (1200×1200 pixels at 300 DPI)
+   - **Material:** High-quality label stock (matte or glossy)
+3. Apply the sticker to the physical product packaging (one sticker per unit).
+
+### Phase 5: Live Scanning 🎯 FINAL OUTCOME
+**What happens when a customer scans:**
+1. Scanner reads the barcode (e.g., 0721688020981)
+2. Scanner queries the International Barcodes Database
+3. Database returns product info (name, company, photo, ingredients) — **ONLY IF REGISTERED**
+4. Your internal system uses the **Serial** to track that specific unit in inventory
+
+**What the customer sees:**
+- Product name and company on their scanner/phone
+- Photo and ingredients
+- Contact information
+
+**Example:**
+```
+Item Scanned:
+  Name: Mix Sweet
+  Company: Sweets and Bakery Pistachio and Cashew L.L.C-O.P.C.
+  Photo: [master-product.png]
+  Ingredients: Semolina flour, coconut, sugar, baking powder, pistachios
+  Contact: +971 55 235 6655, Abu Dhabi - U.A.E
+
+(Your internal system also logs: GTIN 0721688020981 + Serial 005 = Unit #5 of Mix Sweet)
+```
+
+## What Remains To Do (User Checklist)
+
+| Task | Status | Owner | Notes |
+|------|--------|-------|-------|
+| Deploy to Vercel | ⏳ Pending | You | Connect repo to Vercel, set main as default branch |
+| Register 2 GTINs in International Barcodes Database | ⏳ Pending | You | Submit proof of ownership, product photos, ingredients |
+| Print and apply stickers to products | ⏳ Pending | You | Download from dashboard, print at 300 DPI, apply to packages |
+| Test scanning in production | ⏳ Pending | You | Scan a sticker; verify product info returns from database |
+| Verify Vercel dashboard is live | ⏳ Pending | You | Visit deployed URL, preview stickers, download a sample |
+
+## Setup & Local Development
+
+If you need to modify products, regenerate stickers, or test locally before production:
+
+### Development
+```bash
+npm install
+npm run dev      # http://localhost:3000 — live dashboard and preview
+```
+
+### Production Build (Pre-renders all 13 stickers)
+```bash
+npm run build    # Runs the pre-assignment audit; fails if any GTIN is invalid
+npm start        # Serve the production build locally
+```
+
+### Editing Products
+Edit `products.json` directly:
+- **sku:** Internal identifier (never changes after first print)
+- **category:** "Mix Sweet" or "Pastries"
+- **gtin:** Must be in `company.assignedGtins` and pass check-digit validation
+- **serial:** Unique within its GTIN (001–009 for Mix Sweet, 001–004 for Pastries)
+- **ingredients/ingredientsAr:** Override defaults per product (optional)
+
+Save and rebuild; all 13 stickers regenerate automatically.
+
+### Audit Rules (Enforced at build)
+If any rule fails, the build aborts with `Conflict detected: Invalid or duplicate barcode number`:
+
+1. **Data source as authority** — only numbers in `products.json` can be printed
+2. **Placeholder block** — `INT-` codes or non-numeric GTINs trigger placeholder detection
+3. **Check-digit validation** — every GTIN must pass EAN-13 math (12-digit UPC-A also accepted)
+4. **Allowlist enforcement** — every GTIN must appear in `company.assignedGtins`
+5. **Category-to-GTIN mapping** — same GTIN cannot be used for two different categories
+6. **Serial uniqueness** — same serial cannot be used twice within one GTIN
+7. **Duplicate SKUs** — two products cannot have the same SKU
+
+## Verification: How to Check Your GTINs
+
+The dashboard has a **Verify ↗** link on each sticker (visible in the preview lightbox):
+
+1. Click any sticker to open the preview
+2. Click **Verify ↗** button
+3. Opens the International Barcodes Database search pre-filled with your GTIN
+4. If registered, you'll see product info; if not yet registered, you'll get "no results"
+
+**Do this after registering** to confirm your GTINs are live in the database.
+
 ## Post-generation workflow
 
 Generating the images is only the first step. To make the barcodes official and
 internationally searchable, the numbers move through the following lifecycle:
 
-1. **Generation** — Run this project's script to generate the unique GTIN barcode images
-   from the number series assigned to you (Mix Sweet and Pastries).
-2. **Product application** — Apply the generated barcode images to the product packaging for
-   "Mix Sweet" and "Pastries".
-3. **Registration** — Once the products are ready, submit those specific generated barcode
-   numbers to the **International Barcodes Database** for official registration.
-4. **Verification** — After you provide proof of ownership and complete the registration, the
-   database links those numbers to **Sweets and Bakery Pistachio and Cashew L.L.C-O.P.C.**,
-   making them internationally searchable.
+1. **Generation** ✅ — All 13 stickers are already generated and tested.
+2. **Deployment** ⏳ — Push to Vercel and verify the dashboard is live.
+3. **Registration** ⏳ — Submit both GTINs to the International Barcodes Database.
+4. **Product Application** ⏳ — Print stickers and apply to product packaging.
+5. **Live Scanning** 🎯 — Customers scan stickers; database returns product info; you track
+   inventory by Serial number.
