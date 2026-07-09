@@ -1,15 +1,48 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply } from "fastify";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { getCategories, getProducts, productsByCategorySlug } from "../config/products";
 import { generateAll, generateCategory } from "../scripts/generateBarcodes";
 import { MasterAssetError } from "../lib/composite";
+import { googleVerificationUrl, verificationUrl } from "../lib/verify";
 import { OUTPUT_DIR } from "../lib/paths";
 
-export async function barcodeRoutes(app: FastifyInstance) {
-  app.get("/api/categories", async () => getCategories());
+/** Audit failures (thrown on config load) become a 409 with the exact
+ * conflict message; missing master assets a 400; anything else bubbles up. */
+function sendKnownError(reply: FastifyReply, err: unknown): boolean {
+  if (err instanceof Error && err.message.startsWith("Conflict detected")) {
+    reply.code(409).send({ error: err.message });
+    return true;
+  }
+  if (err instanceof MasterAssetError) {
+    reply.code(400).send({ error: err.message });
+    return true;
+  }
+  return false;
+}
 
-  app.get("/api/products", async () => getProducts());
+export async function barcodeRoutes(app: FastifyInstance) {
+  app.get("/api/categories", async (_req, reply) => {
+    try {
+      return getCategories();
+    } catch (err) {
+      if (sendKnownError(reply, err)) return;
+      throw err;
+    }
+  });
+
+  app.get("/api/products", async (_req, reply) => {
+    try {
+      return getProducts().map((p) => ({
+        ...p,
+        verifyUrl: verificationUrl(p.gtin),
+        verifyUrlGoogle: googleVerificationUrl(p.gtin),
+      }));
+    } catch (err) {
+      if (sendKnownError(reply, err)) return;
+      throw err;
+    }
+  });
 
   app.get("/api/barcodes", async () => {
     await fs.mkdir(OUTPUT_DIR, { recursive: true });
@@ -23,7 +56,7 @@ export async function barcodeRoutes(app: FastifyInstance) {
       reply.code(201);
       return { count: files.length, files: files.map((f) => path.basename(f)) };
     } catch (err) {
-      if (err instanceof MasterAssetError) return reply.code(400).send({ error: err.message });
+      if (sendKnownError(reply, err)) return;
       throw err;
     }
   });
@@ -32,15 +65,15 @@ export async function barcodeRoutes(app: FastifyInstance) {
   // Pastries" buttons. The :category param is a slug, e.g. "mix-sweet".
   app.post("/api/barcodes/generate/:category", async (req, reply) => {
     const { category } = req.params as { category: string };
-    if (productsByCategorySlug(category).length === 0) {
-      return reply.code(404).send({ error: `unknown category "${category}"` });
-    }
     try {
+      if (productsByCategorySlug(category).length === 0) {
+        return reply.code(404).send({ error: `unknown category "${category}"` });
+      }
       const files = await generateCategory(category);
       reply.code(201);
       return { category, count: files.length, files: files.map((f) => path.basename(f)) };
     } catch (err) {
-      if (err instanceof MasterAssetError) return reply.code(400).send({ error: err.message });
+      if (sendKnownError(reply, err)) return;
       throw err;
     }
   });

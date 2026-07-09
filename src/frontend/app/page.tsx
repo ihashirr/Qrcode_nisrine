@@ -12,8 +12,10 @@ interface Category {
 }
 
 interface Product {
-  internalBarcode: string;
+  sku: string;
   category: string;
+  gtin: string;
+  verifyUrl: string;
 }
 
 /** Extracts the backend's { error } message, falling back to a generic one. */
@@ -111,19 +113,19 @@ export default function ControlRoom() {
     }
   };
 
-  /** filename -> category slug, derived from products.json via the API. */
-  const fileCategory = useMemo(() => {
-    const map = new Map<string, string>();
+  /** filename -> product (category slug, GTIN, verify link), via the API. */
+  const fileProduct = useMemo(() => {
+    const map = new Map<string, Product & { slug: string }>();
     for (const p of products) {
       const slug = p.category.toLowerCase().replace(/\s+/g, "-");
-      map.set(`${p.internalBarcode.toLowerCase()}.png`, slug);
+      map.set(`${p.sku.toLowerCase()}.png`, { ...p, slug });
     }
     return map;
   }, [products]);
 
   const visibleFiles = useMemo(
-    () => (filter === "all" ? files : files.filter((f) => fileCategory.get(f) === filter)),
-    [files, filter, fileCategory]
+    () => (filter === "all" ? files : files.filter((f) => fileProduct.get(f)?.slug === filter)),
+    [files, filter, fileProduct]
   );
 
   const total = categories.reduce((sum, c) => sum + c.count, 0);
@@ -265,7 +267,7 @@ export default function ControlRoom() {
               <span className="ml-1.5 font-mono text-[10px] text-neutral-400">
                 {tab.slug === "all"
                   ? files.length
-                  : files.filter((f) => fileCategory.get(f) === tab.slug).length}
+                  : files.filter((f) => fileProduct.get(f)?.slug === tab.slug).length}
               </span>
               {filter === tab.slug && (
                 <motion.div
@@ -331,7 +333,12 @@ export default function ControlRoom() {
                   />
                 </button>
                 <figcaption className="no-print flex items-center justify-between gap-2 border-t border-neutral-100 px-3 py-2">
-                  <span className="truncate font-mono text-[11px] text-neutral-600">{f}</span>
+                  <span className="min-w-0">
+                    <span className="block truncate font-mono text-[11px] text-neutral-600">{f}</span>
+                    <span className="block truncate font-mono text-[10px] text-neutral-400">
+                      GTIN {fileProduct.get(f)?.gtin ?? "—"}
+                    </span>
+                  </span>
                   <a
                     href={`${API_BASE}/assets/output/${f}`}
                     download={f}
@@ -370,9 +377,25 @@ export default function ControlRoom() {
                 className="w-full"
                 style={{ objectFit: "contain" }}
               />
-              <div className="flex items-center justify-between border-t border-neutral-100 px-5 py-3">
-                <span className="font-mono text-xs text-neutral-600">{preview}</span>
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between gap-3 border-t border-neutral-100 px-5 py-3">
+                <span className="min-w-0">
+                  <span className="block truncate font-mono text-xs text-neutral-600">{preview}</span>
+                  <span className="block truncate font-mono text-[11px] text-neutral-400">
+                    GTIN {fileProduct.get(preview)?.gtin ?? "—"}
+                  </span>
+                </span>
+                <div className="flex shrink-0 items-center gap-2">
+                  {fileProduct.get(preview)?.verifyUrl && (
+                    <a
+                      href={fileProduct.get(preview)!.verifyUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      title="Check this GTIN against the International Barcodes Database"
+                      className="rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-bold uppercase text-neutral-700 hover:border-yellow-400 hover:bg-yellow-50"
+                    >
+                      Verify ↗
+                    </a>
+                  )}
                   <a
                     href={`${API_BASE}/assets/output/${preview}`}
                     download={preview}

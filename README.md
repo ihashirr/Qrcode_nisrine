@@ -27,19 +27,50 @@ src/
 
 ## Data source: `products.json`
 
-`products.json` at the repo root is the single source of truth — barcode payloads and
-categories per product, plus company contact details and default ingredients. No DB IDs:
+`products.json` at the repo root is the **only authority on barcode numbers**. It carries
+the company's assigned GTIN allowlist (verbatim from the IBN *Certificate of GTIN
+Assignment*, order UAE-1806) and the per-product assignments:
 
 ```json
-{ "internalBarcode": "INT-M1001", "category": "Mix Sweet" }
+{ "sku": "INT-M1001", "category": "Mix Sweet", "gtin": "0721688020981" }
 ```
 
-Mix Sweet uses `INT-M1001…INT-M1009`, Pastries uses `INT-P1001…INT-P1004`. Add, remove, or
-relabel a product here and everything downstream (categories, counts, generated files, the
-dashboard buttons) follows automatically. Products can override `ingredients` /
-`ingredientsAr` individually; otherwise the file-level `defaults` apply. **When the official
-GTIN series is assigned, paste the 12/13-digit numbers into `internalBarcode` — the renderer
-switches to EAN-13/UPC-A automatically.**
+- `sku` — internal identity, used for filenames and the registry log; never printed as a barcode
+- `gtin` — the registered number printed on the sticker as EAN-13
+- `company.assignedGtins` — the allowlist: `0721688020981` (Mix Sweet) and
+  `0721688020998` (Pastries, confirmed registered in the International Barcodes Database)
+
+One GTIN identifies one **product line**, not one sticker — all 9 Mix Sweet stickers
+correctly share the Mix Sweet GTIN, all 4 Pastries share the Pastries GTIN. Note the
+certificate assigns **two** GTINs (Quantity: 2): the "series" endpoints are the two numbers
+themselves. The 13-digit values between them mostly fail check-digit math and are not owned —
+never fabricate an in-between number. Products can override `ingredients` / `ingredientsAr`
+individually; otherwise the file-level `defaults` apply.
+
+## Validation-First workflow
+
+Barcode numbers are treated as a protected asset. Every config load runs a **pre-assignment
+audit** (`config/products.ts`) and generation aborts with
+`Conflict detected: Invalid or duplicate barcode number.` when any rule fails:
+
+1. **Data source as authority** — only numbers in `products.json` can ever be printed.
+2. **Placeholder block** — an `INT-` value (or anything non-13-digit) in a `gtin` field
+   aborts the run.
+3. **Check-digit math** — every GTIN must pass GTIN-13 validation (catches typos and
+   fabricated numbers).
+4. **Allowlist** — every GTIN must appear in `company.assignedGtins` (the certificate).
+5. **Conflict detection** — the same GTIN assigned to two *different* categories aborts;
+   duplicate SKUs abort.
+
+**External verification** — `npm run verify` (backend) prints a pre-filled International
+Barcodes Database search link per GTIN (plus a Google fallback) so each number can be
+manually confirmed before printing; the dashboard's preview lightbox has the same
+**Verify ↗** link per sticker. The API surfaces audit failures as HTTP 409 with the exact
+conflict message.
+
+**Internal registry** — every generation run appends to `used_barcodes.log` at the repo
+root: timestamp, SKU, category, GTIN, and filename. Even if the images are deleted, the log
+is the permanent record of which GTIN each product claimed.
 
 ## The circular sticker (generation logic)
 
