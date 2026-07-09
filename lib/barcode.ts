@@ -1,13 +1,11 @@
-import bwipjs from "bwip-js";
+import bwipjs from "bwip-js/node";
 
 /**
  * Renders a barcode PNG for the sticker.
  *
  * Symbology is picked from the payload: a 12/13-digit value renders as
  * EAN-13/UPC-A (the retail symbology on the physical label — e.g.
- * "0 788364 199676"), anything else as Code128. So the day the official
- * GTIN series is assigned, swapping the numbers into products.json is the
- * only change needed.
+ * "0 788364 199676"), anything else as Code128.
  *
  * `paddingwidth` bakes the mandatory quiet zone into the image so the bars
  * never sit against the sticker edge — scanners fail without it.

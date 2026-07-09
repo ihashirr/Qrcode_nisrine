@@ -1,21 +1,21 @@
 {
-  "name": "barcode-control-room-frontend",
+  "name": "barcode-control-room",
   "version": "0.1.0",
   "private": true,
+  "description": "Single Next.js app that generates and serves the company's circular barcode stickers on Vercel.",
   "scripts": {
-    "sync": "node scripts/sync-assets.mjs",
-    "predev": "node scripts/sync-assets.mjs",
     "dev": "next dev",
-    "prebuild": "node scripts/sync-assets.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
+    "bwip-js": "^4.5.1",
     "framer-motion": "^12.42.2",
     "next": "14.2.35",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "sharp": "^0.33.5"
   },
   "devDependencies": {
     "@types/node": "^20.14.10",

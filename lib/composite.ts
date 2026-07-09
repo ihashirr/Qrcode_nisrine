@@ -2,24 +2,26 @@ import fs from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
 import { renderBarcodePng } from "./barcode";
-import type { Company } from "../config/products";
-import { MASTER_LOGO_PATH, REPO_ROOT } from "./paths";
+import type { Company } from "./products";
 
-/** Thrown when a required master asset is absent — mapped to a 400 by the API. */
+// Bundled brand asset. next.config.js force-includes assets/ in the traced
+// output so this path resolves in the serverless/build environment too.
+const MASTER_LOGO_PATH = path.join(process.cwd(), "assets", "master-logo.png");
+
+/** Thrown when the master logo is absent. */
 export class MasterAssetError extends Error {}
 
 function assertMasterAssets(): void {
   if (!fs.existsSync(MASTER_LOGO_PATH)) {
     throw new MasterAssetError(
-      `Missing master asset: ${path.relative(REPO_ROOT, MASTER_LOGO_PATH)}. ` +
-        `Place master-logo.png in assets/logo/ before generating.`
+      "Missing master asset: assets/master-logo.png. Place the company logo there before generating."
     );
   }
 }
 
 /* ── Fixed circular sticker geometry ─────────────────────────────────
  * The physical product label is a circular sticker. Every element sits at
- * absolute coordinates on a fixed canvas so all 13 stickers are identical
+ * absolute coordinates on a fixed canvas so all stickers are identical
  * except for the product name and barcode payload.
  *
  * The design is composed upright (logo at top, barcode at bottom, contact
@@ -81,9 +83,9 @@ function wrap(text: string, maxChars: number, maxLines: number): string[] {
 
 /**
  * Text along the bottom rim, rendered as individually positioned + rotated
- * characters (this librsvg build does not support <textPath>). Characters
- * are centered on the 6 o'clock point, letter feet toward the rim, reading
- * left to right — the classic bottom-arc layout on circular labels.
+ * characters (librsvg does not support <textPath>). Characters are centered
+ * on the 6 o'clock point, letter feet toward the rim, reading left to right
+ * — the classic bottom-arc layout on circular labels.
  */
 function bottomArcText(text: string, radius: number, fontSize: number, color: string): string {
   const chars = [...text];
@@ -183,24 +185,12 @@ export async function buildLabelImage({
   })
     .composite([
       { input: svg, top: 0, left: 0 },
-      {
-        input: logo,
-        top: LOGO.top,
-        left: Math.round(C - (logoMeta.width ?? 0) / 2),
-      },
-      {
-        input: barcode,
-        top: BARCODE.top,
-        left: Math.round(C - (barcodeMeta.width ?? 0) / 2),
-      },
+      { input: logo, top: LOGO.top, left: Math.round(C - (logoMeta.width ?? 0) / 2) },
+      { input: barcode, top: BARCODE.top, left: Math.round(C - (barcodeMeta.width ?? 0) / 2) },
     ])
     .png()
     .toBuffer();
 
   // Rotate the flattened disc to the physical label's orientation.
-  return sharp(upright)
-    .rotate(OUTPUT_ROTATION)
-    .png()
-    .withMetadata({ density: 300 })
-    .toBuffer();
+  return sharp(upright).rotate(OUTPUT_ROTATION).png().withMetadata({ density: 300 }).toBuffer();
 }

@@ -1,8 +1,6 @@
 node_modules/
-dist/
 .next/
+out/
 *.log
 *.tsbuildinfo
-
-# The GTIN registry is the permanent record of claimed numbers — always track it.
-!used_barcodes.log
+.vercel

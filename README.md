@@ -7,27 +7,23 @@ English branding, ingredients, vertical barcode, and contact details on the rim 
 
 ## Structure
 
+A single **Next.js app** — no separate backend, no build steps to run. Generation is folded
+into API route handlers that Next pre-renders at build time, so it deploys to Vercel with
+zero long-running servers.
+
 ```
-products.json     master data source: barcode payloads, categories, ingredients, contact info
+products.json     master data source: GTIN allowlist + per-product assignments (the authority)
 assets/
-  logo/           master-logo.png            (official company logo)
-  product/        master-product.png         (official product photo — used for the
-                                              digital catalog / database registration)
-  output/         the 13 generated sticker PNGs (committed deliverables)
-used_barcodes.log the internal registry: every GTIN a generated file has claimed
-backend/          Fastify + TypeScript API and generation logic
-  src/config/products.ts     loads + audits products.json; derives categories
-  src/lib/barcode.ts         renders EAN-13/UPC-A (numeric GTINs) or Code128 (bwip-js)
-  src/lib/composite.ts       draws the circular sticker: disc, logo, texts, arcs, barcode
-  src/lib/verify.ts          verification-link helpers
-  src/scripts/generateBarcodes.ts   CLI: generate all, or one category
-  src/scripts/verifyBarcodes.ts     CLI: audit + verification links per GTIN
-  src/routes/barcodes.ts     REST API used by the frontend
-  src/server.ts              Fastify entrypoint
-frontend/         Next.js + Tailwind + framer-motion "Control Room" dashboard
-  app/page.tsx    the dashboard (generate, filter, preview, verify, print)
-  scripts/sync-assets.mjs   prebuild: products.json + stickers -> public/ (Vercel-ready)
-  public/         catalog.json + stickers/ served statically in gallery mode
+  master-logo.png     official company logo, composited onto every sticker
+  master-product.png  official product photo (for the digital catalog / DB registration)
+lib/
+  products.ts     loads + audits products.json; derives categories; verify links
+  barcode.ts      renders EAN-13/UPC-A (numeric GTINs) or Code128 (bwip-js)
+  composite.ts    draws the circular sticker: disc, logo, texts, arcs, barcode (sharp)
+app/
+  page.tsx        the dashboard (filter, preview, verify, download, print)
+  api/catalog/route.ts        GET catalog JSON (runs the audit at build)
+  api/sticker/[sku]/route.ts  GET the sticker PNG (generated at build, one per SKU)
 ```
 
 ## Data source: `products.json`
@@ -54,28 +50,23 @@ individually; otherwise the file-level `defaults` apply.
 
 ## Validation-First workflow
 
-Barcode numbers are treated as a protected asset. Every config load runs a **pre-assignment
-audit** (`config/products.ts`) and generation aborts with
-`Conflict detected: Invalid or duplicate barcode number.` when any rule fails:
+Barcode numbers are treated as a protected asset. Loading `products.json` (`lib/products.ts`)
+runs a **pre-assignment audit**; if any rule fails it throws
+`Conflict detected: Invalid or duplicate barcode number.`, which **fails the build** — invalid
+data can never deploy:
 
 1. **Data source as authority** — only numbers in `products.json` can ever be printed.
 2. **Placeholder block** — an `INT-` value (or anything that isn't a 12/13-digit number)
-   in a `gtin` field aborts the run.
+   in a `gtin` field aborts the build.
 3. **Check-digit math** — every GTIN must pass GTIN check-digit validation (catches typos
    and fabricated numbers); 12-digit UPC-A values are accepted and canonicalized to GTIN-13.
 4. **Allowlist** — every GTIN must appear in `company.assignedGtins` (the certificate).
 5. **Conflict detection** — the same GTIN assigned to two *different* categories aborts;
    duplicate SKUs abort.
 
-**External verification** — `npm run verify` (backend) prints a pre-filled International
-Barcodes Database search link per GTIN (plus a Google fallback) so each number can be
-manually confirmed before printing; the dashboard's preview lightbox has the same
-**Verify ↗** link per sticker. The API surfaces audit failures as HTTP 409 with the exact
-conflict message.
-
-**Internal registry** — every generation run appends to `used_barcodes.log` at the repo
-root: timestamp, SKU, category, GTIN, and filename. Even if the images are deleted, the log
-is the permanent record of which GTIN each product claimed.
+**External verification** — the dashboard's preview lightbox has a **Verify ↗** link per
+sticker that opens the pre-filled International Barcodes Database search, so each number can
+be confirmed as owned by the company.
 
 ## The circular sticker (generation logic)
 
@@ -97,69 +88,49 @@ same position on all 13 stickers. Only the product name and barcode payload chan
    `OUTPUT_ROTATION = 0` in `composite.ts` for an upright variant — a circle prints the
    same either way.
 
-Files are written to `assets/output/` named after the internal SKU, e.g. `int-m1001.png`
-(SKUs stay unique per sticker even though a category shares one GTIN). The 13 stickers are
-committed as the project's deliverables and are fully regenerable.
+Each sticker is served at `/api/sticker/<sku>.png`, e.g. `/api/sticker/int-m1001.png` (SKUs
+stay unique per sticker even though a category shares one GTIN). Next pre-renders one static
+PNG per SKU at build time, so there is no `sharp` at request time and no stored files to
+commit.
 
 ## Running it
 
-The master assets ship in the repo (`assets/logo/master-logo.png`,
-`assets/product/master-product.png`), so generation works out of the box.
+The master logo ships in the repo (`assets/master-logo.png`), so it works out of the box.
+One app, one command:
 
 ```bash
-# Backend
-cd backend
 npm install
-npm run generate               # generate all 13 PNGs into assets/output/
-npm run generate "Pastries"    # or just one category
-npm run dev                    # run the API on :4000
-
-# Frontend (separate terminal)
-cd frontend
-npm install
-npm run dev                    # Control Room dashboard on :3000
+npm run dev      # http://localhost:3000
+npm run build    # production build — generates all 13 stickers, runs the audit
+npm start        # serve the production build
 ```
 
-The dashboard has two modes, chosen by the `NEXT_PUBLIC_API_BASE` env var:
-
-- **Control-room mode** (`NEXT_PUBLIC_API_BASE=http://localhost:4000 npm run dev`) — talks to
-  the Fastify backend: live listing plus the per-category and **Generate All** buttons, with a
-  progress bar. Use this locally when you want to (re)generate stickers.
-- **Gallery mode** (no env var — the default, and how it deploys) — a fully static site served
-  from `frontend/public/catalog.json` + `frontend/public/stickers/`, with no backend. The
-  generate buttons are hidden; filter tabs, the preview lightbox (Esc to close), per-sticker
-  GTIN, **Verify ↗**, download, and **Print** all work.
+The dashboard shows the catalog: category cards, filter tabs, a click-to-zoom preview
+lightbox (Esc to close) with per-sticker GTIN and a **Verify ↗** link, per-sticker download,
+and **Print**.
 
 ## Deploy to Vercel
 
-The site deploys as a **static Next.js app** — no server, because generation (sharp + the
-audit + disk writes) is a local/build-time concern and the 13 stickers are committed. A
-`prebuild` step (`frontend/scripts/sync-assets.mjs`) copies `products.json` + the stickers in
-`assets/output/` into `frontend/public/` (`catalog.json` + `stickers/`); those synced copies
-are also committed so the build works even when Vercel can't see the repo root.
+It's a standard single Next.js app at the repo root, so Vercel needs no special
+configuration — **Root Directory = repo root** (the default), framework auto-detected, no
+`vercel.json`. Push to the connected branch (or merge to your production branch) and Vercel
+builds it:
 
-Because this is a monorepo, set the Vercel project's **Root Directory to `frontend`** (Project
-Settings → General → Root Directory). Vercel then auto-detects Next.js — no `vercel.json`
-needed. Push to the connected branch (or merge to your production branch) and it builds.
+- `next build` runs the pre-assignment **audit** (a bad GTIN fails the build — nothing
+  invalid can ship) and pre-renders all 13 stickers with `sharp` on Vercel's build
+  infrastructure.
+- The deployed site is fully static + serverless route handlers — **no long-running worker**
+  to host or manage.
 
-To update the live stickers after editing `products.json` or the master assets:
+To update the stickers, edit `products.json` (or swap `assets/master-logo.png`), commit, and
+push — the next build regenerates everything.
 
-```bash
-cd backend && npm run generate     # regenerate assets/output/
-cd ../frontend && npm run sync      # refresh frontend/public/{catalog.json,stickers}
-git add -A && git commit && git push # Vercel redeploys
-```
+## API (Next.js route handlers)
 
-## API
-
-| Method | Path                                | Purpose                                   |
-|--------|-------------------------------------|-------------------------------------------|
-| GET    | `/api/categories`                   | Categories + counts (derived from data)   |
-| GET    | `/api/products`                     | Raw product list                          |
-| GET    | `/api/barcodes`                     | List generated PNG filenames              |
-| POST   | `/api/barcodes/generate`            | Regenerate all assets                     |
-| POST   | `/api/barcodes/generate/:category`  | Regenerate one category (slug)            |
-| GET    | `/assets/output/:filename`          | Serve a generated PNG                     |
+| Method | Path                          | Purpose                                        |
+|--------|-------------------------------|------------------------------------------------|
+| GET    | `/api/catalog`                | Categories, products, GTINs, verify links      |
+| GET    | `/api/sticker/<sku>.png`      | The pre-rendered sticker PNG for one SKU        |
 
 ## Production checklist
 
@@ -176,11 +147,11 @@ git add -A && git commit && git push # Vercel redeploys
 
 The two images in `assets/` are the master brand assets:
 
-- `assets/logo/master-logo.png` — the official Pistachio & Cashew logo, composited onto
-  every sticker (carries the Arabic + English brand names)
-- `assets/product/master-product.png` — the official product photo (cropped to remove the
-  camera watermark); the physical sticker doesn't carry it, but it is the official visual
-  for the digital catalog and database registration below
+- `assets/master-logo.png` — the official Pistachio & Cashew logo, composited onto every
+  sticker (carries the Arabic + English brand names)
+- `assets/master-product.png` — the official product photo (cropped to remove the camera
+  watermark); the physical sticker doesn't carry it, but it is the official visual for the
+  digital catalog and database registration below
 
 Beyond the labels themselves, these images serve as:
 

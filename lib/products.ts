@@ -1,15 +1,18 @@
 import fs from "node:fs";
-import { PRODUCTS_JSON } from "../lib/paths";
+import path from "node:path";
+
+// The data source lives at the app root; on Vercel the build (and any
+// server render) runs with cwd = project root, so this resolves correctly.
+const PRODUCTS_JSON = path.join(process.cwd(), "products.json");
 
 /**
  * The master data source and the ONLY authority on barcode numbers.
- * `products.json` at the repo root holds the company's assigned GTIN
- * allowlist (from the IBN Certificate of GTIN Assignment) and the
- * per-product assignments. Nothing outside that file may introduce a
- * barcode number.
+ * `products.json` holds the company's assigned GTIN allowlist (from the IBN
+ * Certificate of GTIN Assignment) and the per-product assignments. Nothing
+ * outside that file may introduce a barcode number.
  */
 export interface Product {
-  /** Internal SKU used for filenames and the log — never printed as a barcode. */
+  /** Internal SKU used for filenames — never printed as a barcode. */
   sku: string;
   /** Display category, e.g. "Mix Sweet" or "Pastries". */
   category: string;
@@ -40,7 +43,7 @@ interface ProductsFile {
   products: Product[];
 }
 
-/** Thrown by the pre-assignment audit — mapped to HTTP 409 by the API. */
+/** Thrown by the pre-assignment audit — a conflict/invalid barcode number. */
 export class AuditError extends Error {
   constructor(detail: string) {
     super(`Conflict detected: Invalid or duplicate barcode number. ${detail}`);
@@ -63,9 +66,9 @@ export function canonicalGtin13(value: unknown): string | null {
 }
 
 /**
- * Pre-assignment audit — runs once per config load, before anything can
- * generate. Throws AuditError (aborting the run) when a barcode number is
- * not a protected, conflict-free asset:
+ * Pre-assignment audit — runs once per config load, at build time. Throws
+ * AuditError (which fails the build) when a barcode number is not a
+ * protected, conflict-free asset:
  *
  *  - "INT-" or any other placeholder / non-GTIN value in the gtin field
  *  - a check digit that fails GTIN math (a typo'd or fabricated number)
@@ -73,8 +76,8 @@ export function canonicalGtin13(value: unknown): string | null {
  *  - the same GTIN assigned to two DIFFERENT categories (a real conflict;
  *    products within one category sharing their category's GTIN is correct
  *    retail practice — one GTIN identifies one product line)
- *  - duplicate SKUs, compared case-insensitively because filenames are
- *    lowercased (a case-only difference would silently overwrite a file)
+ *  - duplicate SKUs, compared case-insensitively because filenames/routes
+ *    are lowercased (a case-only difference would collide)
  *
  * Returns the file with every GTIN canonicalized to 13 digits.
  */
@@ -101,7 +104,7 @@ function audit(data: ProductsFile): ProductsFile {
     if (typeof p.sku !== "string" || !p.sku.trim() || typeof p.category !== "string" || !p.category.trim()) {
       throw new AuditError(`every product needs a non-empty sku and category (got ${JSON.stringify(p)}).`);
     }
-    const skuKey = p.sku.toLowerCase(); // filenames are lowercased — case-only SKUs collide
+    const skuKey = p.sku.toLowerCase(); // routes/filenames are lowercased — case-only SKUs collide
     if (seenSkus.has(skuKey)) throw new AuditError(`duplicate SKU "${p.sku}" (SKUs are case-insensitive).`);
     seenSkus.add(skuKey);
 
@@ -129,8 +132,7 @@ function audit(data: ProductsFile): ProductsFile {
 }
 
 // Cache the parsed + audited config, invalidated when products.json changes
-// on disk. One generation run (or API request burst) then reads and audits
-// the file once instead of once per accessor call.
+// on disk, so one build reads and audits the file once.
 let cache: { mtimeMs: number; data: ProductsFile } | null = null;
 
 function load(): ProductsFile {
@@ -156,14 +158,25 @@ export function getProducts(): Product[] {
   }));
 }
 
+/** The one product whose SKU matches (case-insensitively), or undefined. */
+export function getProductBySku(sku: string): Product | undefined {
+  const key = sku.toLowerCase();
+  return getProducts().find((p) => p.sku.toLowerCase() === key);
+}
+
 /** URL-safe slug for a category name, e.g. "Mix Sweet" -> "mix-sweet". */
 export function categorySlug(category: string): string {
   return category.toLowerCase().replace(/\s+/g, "-");
 }
 
-/** Products whose category slug matches the given slug. */
-export function productsByCategorySlug(slug: string): Product[] {
-  return getProducts().filter((p) => categorySlug(p.category) === slug);
+/** The lowercased sticker filename for a SKU, e.g. "int-m1001.png". */
+export function stickerFile(sku: string): string {
+  return `${sku.toLowerCase()}.png`;
+}
+
+/** External verification link — the IBN database search, pre-filled. */
+export function verificationUrl(gtin: string): string {
+  return `https://barcodesdatabase.org/?s=${encodeURIComponent(gtin)}`;
 }
 
 /** Distinct categories with their unit counts, in first-seen order. */
