@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
 import { renderBarcodePng } from "./barcode";
-import { getCompany } from "../config/products";
+import type { Company } from "../config/products";
 import { MASTER_LOGO_PATH, REPO_ROOT } from "./paths";
 
 /** Thrown when a required master asset is absent — mapped to a 400 by the API. */
@@ -108,6 +108,8 @@ function bottomArcText(text: string, radius: number, fontSize: number, color: st
 export interface BuildLabelInput {
   categoryName: string;
   barcodeValue: string;
+  /** Company branding/contact — loaded once by the caller, not per sticker. */
+  company: Company;
   ingredients?: string;
   ingredientsAr?: string;
 }
@@ -121,11 +123,11 @@ export interface BuildLabelInput {
 export async function buildLabelImage({
   categoryName,
   barcodeValue,
+  company,
   ingredients = "",
   ingredientsAr = "",
 }: BuildLabelInput): Promise<Buffer> {
   assertMasterAssets();
-  const company = getCompany();
 
   const [logo, barcodeRaw] = await Promise.all([
     sharp(MASTER_LOGO_PATH).resize({ width: LOGO.width, fit: "inside" }).toBuffer(),

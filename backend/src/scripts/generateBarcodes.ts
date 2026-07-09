@@ -1,7 +1,14 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { categorySlug, getProducts, productsByCategorySlug, type Product } from "../config/products";
-import { buildLabelImage } from "../lib/composite";
+import {
+  AuditError,
+  categorySlug,
+  getCompany,
+  getProducts,
+  productsByCategorySlug,
+  type Product,
+} from "../config/products";
+import { buildLabelImage, MasterAssetError } from "../lib/composite";
 import { OUTPUT_DIR, USED_BARCODES_LOG } from "../lib/paths";
 
 function fileNameFor(product: Product): string {
@@ -10,34 +17,33 @@ function fileNameFor(product: Product): string {
   return `${product.sku.toLowerCase()}.png`;
 }
 
-/** Appends this run's assignments to the internal registry (used_barcodes.log)
- * so there is a permanent text record of which GTIN each product claimed. */
-async function appendLog(products: Product[]): Promise<void> {
-  const stamp = new Date().toISOString();
-  const lines = products
-    .map((p) => `${stamp} | ${p.sku} | ${p.category} | GTIN ${p.gtin} | ${fileNameFor(p)}`)
-    .join("\n");
-  await fs.appendFile(USED_BARCODES_LOG, `${lines}\n`, "utf8");
-}
-
 async function generateProducts(products: Product[]): Promise<string[]> {
   await fs.mkdir(OUTPUT_DIR, { recursive: true });
+  const company = getCompany(); // one audited config load for the whole run
+  const stamp = new Date().toISOString();
   const written: string[] = [];
 
   for (const product of products) {
     const image = await buildLabelImage({
       categoryName: product.category,
       barcodeValue: product.gtin,
+      company,
       ingredients: product.ingredients,
       ingredientsAr: product.ingredientsAr,
     });
     const filePath = path.join(OUTPUT_DIR, fileNameFor(product));
     await fs.writeFile(filePath, image);
+    // Register each claim immediately after its file lands, so the registry
+    // never misses a sticker that exists on disk even if a later one fails.
+    await fs.appendFile(
+      USED_BARCODES_LOG,
+      `${stamp} | ${product.sku} | ${product.category} | GTIN ${product.gtin} | ${fileNameFor(product)}\n`,
+      "utf8"
+    );
     written.push(filePath);
     console.log(`generated ${path.basename(filePath)} (${product.category} · GTIN ${product.gtin})`);
   }
 
-  if (written.length > 0) await appendLog(products);
   return written;
 }
 
@@ -67,7 +73,13 @@ if (require.main === module) {
       console.log(`Registry updated: ${USED_BARCODES_LOG}`);
     })
     .catch((err) => {
-      console.error(err instanceof Error ? err.message : err);
+      // Expected, self-explanatory failures print as one line; anything else
+      // keeps its stack trace for debugging.
+      if (err instanceof AuditError || err instanceof MasterAssetError) {
+        console.error(err.message);
+      } else {
+        console.error(err);
+      }
       process.exit(1);
     });
 }

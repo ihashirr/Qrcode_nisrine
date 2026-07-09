@@ -66,13 +66,19 @@ export default function ControlRoom() {
         fetch(`${API_BASE}/api/products`),
         fetch(`${API_BASE}/api/barcodes`),
       ]);
-      if (!catRes.ok || !prodRes.ok || !fileRes.ok) throw new Error("bad response");
+      // A non-OK response carries a real backend message (e.g. a 409
+      // "Conflict detected" audit failure) — show that, never a generic one.
+      const failed = [catRes, prodRes, fileRes].find((r) => !r.ok);
+      if (failed) {
+        setError(await readError(failed, `Backend error (HTTP ${failed.status}).`));
+        return;
+      }
       setCategories(await catRes.json());
       setProducts(await prodRes.json());
       setFiles(await fileRes.json());
       setError(null);
     } catch {
-      setError("Backend unreachable — start the Fastify server on :4000 (cd src/backend && npm run dev).");
+      setError("Backend unreachable — start the Fastify server on :4000 (cd backend && npm run dev).");
     } finally {
       setLoading(false);
     }
@@ -355,7 +361,9 @@ export default function ControlRoom() {
 
       {/* ── Preview lightbox ───────────────────────────────────── */}
       <AnimatePresence>
-        {preview && (
+        {preview && (() => {
+          const previewProduct = fileProduct.get(preview);
+          return (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -381,13 +389,13 @@ export default function ControlRoom() {
                 <span className="min-w-0">
                   <span className="block truncate font-mono text-xs text-neutral-600">{preview}</span>
                   <span className="block truncate font-mono text-[11px] text-neutral-400">
-                    GTIN {fileProduct.get(preview)?.gtin ?? "—"}
+                    GTIN {previewProduct?.gtin ?? "—"}
                   </span>
                 </span>
                 <div className="flex shrink-0 items-center gap-2">
-                  {fileProduct.get(preview)?.verifyUrl && (
+                  {previewProduct?.verifyUrl && (
                     <a
-                      href={fileProduct.get(preview)!.verifyUrl}
+                      href={previewProduct.verifyUrl}
                       target="_blank"
                       rel="noreferrer"
                       title="Check this GTIN against the International Barcodes Database"
@@ -413,7 +421,8 @@ export default function ControlRoom() {
               </div>
             </motion.div>
           </motion.div>
-        )}
+          );
+        })()}
       </AnimatePresence>
 
       {/* ── Toast ──────────────────────────────────────────────── */}

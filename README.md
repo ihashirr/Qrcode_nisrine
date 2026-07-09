@@ -14,15 +14,18 @@ assets/
   product/        master-product.png         (official product photo — used for the
                                               digital catalog / database registration)
   output/         the 13 generated sticker PNGs (committed deliverables)
-src/
-  backend/        Fastify + TypeScript API and generation logic
-    src/config/products.ts     loads + validates products.json; derives categories
-    src/lib/barcode.ts         renders EAN-13/UPC-A (numeric GTINs) or Code128 (bwip-js)
-    src/lib/composite.ts       draws the circular sticker: disc, logo, texts, arcs, barcode
-    src/scripts/generateBarcodes.ts   CLI: generate all, or one category
-    src/routes/barcodes.ts     REST API used by the frontend
-    src/server.ts               Fastify entrypoint
-  frontend/       Next.js + Tailwind + framer-motion "Control Room" dashboard
+used_barcodes.log the internal registry: every GTIN a generated file has claimed
+backend/          Fastify + TypeScript API and generation logic
+  src/config/products.ts     loads + audits products.json; derives categories
+  src/lib/barcode.ts         renders EAN-13/UPC-A (numeric GTINs) or Code128 (bwip-js)
+  src/lib/composite.ts       draws the circular sticker: disc, logo, texts, arcs, barcode
+  src/lib/verify.ts          verification-link helpers
+  src/scripts/generateBarcodes.ts   CLI: generate all, or one category
+  src/scripts/verifyBarcodes.ts     CLI: audit + verification links per GTIN
+  src/routes/barcodes.ts     REST API used by the frontend
+  src/server.ts              Fastify entrypoint
+frontend/         Next.js + Tailwind + framer-motion "Control Room" dashboard
+  app/page.tsx    the dashboard (generate, filter, preview, verify, print)
 ```
 
 ## Data source: `products.json`
@@ -54,10 +57,10 @@ audit** (`config/products.ts`) and generation aborts with
 `Conflict detected: Invalid or duplicate barcode number.` when any rule fails:
 
 1. **Data source as authority** — only numbers in `products.json` can ever be printed.
-2. **Placeholder block** — an `INT-` value (or anything non-13-digit) in a `gtin` field
-   aborts the run.
-3. **Check-digit math** — every GTIN must pass GTIN-13 validation (catches typos and
-   fabricated numbers).
+2. **Placeholder block** — an `INT-` value (or anything that isn't a 12/13-digit number)
+   in a `gtin` field aborts the run.
+3. **Check-digit math** — every GTIN must pass GTIN check-digit validation (catches typos
+   and fabricated numbers); 12-digit UPC-A values are accepted and canonicalized to GTIN-13.
 4. **Allowlist** — every GTIN must appear in `company.assignedGtins` (the certificate).
 5. **Conflict detection** — the same GTIN assigned to two *different* categories aborts;
    duplicate SKUs abort.
@@ -92,8 +95,9 @@ same position on all 13 stickers. Only the product name and barcode payload chan
    `OUTPUT_ROTATION = 0` in `composite.ts` for an upright variant — a circle prints the
    same either way.
 
-Files are written to `assets/output/` named after the barcode payload, e.g. `int-m1001.png`.
-The 13 stickers are committed as the project's deliverables and are fully regenerable.
+Files are written to `assets/output/` named after the internal SKU, e.g. `int-m1001.png`
+(SKUs stay unique per sticker even though a category shares one GTIN). The 13 stickers are
+committed as the project's deliverables and are fully regenerable.
 
 ## Running it
 
@@ -102,14 +106,14 @@ The master assets ship in the repo (`assets/logo/master-logo.png`,
 
 ```bash
 # Backend
-cd src/backend
+cd backend
 npm install
 npm run generate               # generate all 13 PNGs into assets/output/
 npm run generate "Pastries"    # or just one category
 npm run dev                    # run the API on :4000
 
 # Frontend (separate terminal)
-cd src/frontend
+cd frontend
 npm install
 npm run dev                    # Control Room dashboard on :3000
 ```
