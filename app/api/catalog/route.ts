@@ -10,6 +10,7 @@ export function GET() {
     sku: p.sku,
     category: p.category,
     gtin: p.gtin,
+    serial: p.serial,
     file: stickerFile(p.sku),
     verifyUrl: verificationUrl(p.gtin),
   }));

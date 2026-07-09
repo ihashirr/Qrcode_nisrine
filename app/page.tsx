@@ -13,6 +13,7 @@ interface Product {
   sku: string;
   category: string;
   gtin: string;
+  serial: string;
   file: string;
   verifyUrl: string;
 }
@@ -250,7 +251,7 @@ export default function ControlRoom() {
                   <span className="min-w-0">
                     <span className="block truncate font-mono text-[11px] text-neutral-600">{f}</span>
                     <span className="block truncate font-mono text-[10px] text-neutral-400">
-                      GTIN {fileProduct.get(f)?.gtin ?? "—"}
+                      GTIN {fileProduct.get(f)?.gtin ?? "—"} · Serial {fileProduct.get(f)?.serial ?? "—"}
                     </span>
                   </span>
                   <a
@@ -297,7 +298,7 @@ export default function ControlRoom() {
                   <span className="min-w-0">
                     <span className="block truncate font-mono text-xs text-neutral-600">{preview}</span>
                     <span className="block truncate font-mono text-[11px] text-neutral-400">
-                      GTIN {previewProduct?.gtin ?? "—"}
+                      GTIN {previewProduct?.gtin ?? "—"} · Serial {previewProduct?.serial ?? "—"}
                     </span>
                   </span>
                   <div className="flex shrink-0 items-center gap-2">

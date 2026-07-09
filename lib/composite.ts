@@ -40,6 +40,8 @@ const PRODUCT = { y: 536, size: 54, color: "#8a5a2b" };
 const INGREDIENTS_AR = { y: 596, size: 30, color: "#8a5a2b" };
 const INGREDIENTS = { firstY: 642, lineHeight: 38, size: 29, color: "#3f3f3f", maxChars: 46 };
 const BARCODE = { top: 742, maxWidth: 470, maxHeight: 235 };
+// Per-item serial: discreet, below the barcode, well outside the bars.
+const SERIAL = { y: 1012, size: 25, color: "#6b6b6b" };
 const MOBILE_ARC = { radius: 538, size: 33, color: "#2f2f2f" };
 const LOCATION_ARC = { radius: 478, size: 33, color: "#b8963e" };
 
@@ -112,6 +114,8 @@ export interface BuildLabelInput {
   barcodeValue: string;
   /** Company branding/contact — loaded once by the caller, not per sticker. */
   company: Company;
+  /** Per-item serial printed discreetly, e.g. "001". */
+  serial?: string;
   ingredients?: string;
   ingredientsAr?: string;
 }
@@ -126,6 +130,7 @@ export async function buildLabelImage({
   categoryName,
   barcodeValue,
   company,
+  serial = "",
   ingredients = "",
   ingredientsAr = "",
 }: BuildLabelInput): Promise<Buffer> {
@@ -173,6 +178,14 @@ export async function buildLabelImage({
                font-size="${INGREDIENTS.size}" fill="${INGREDIENTS.color}" text-anchor="middle">${escapeXml(line)}</text>`
         )
         .join("\n")}
+
+      <!-- per-item serial, discreet, below the barcode -->
+      ${
+        serial
+          ? `<text x="${C}" y="${SERIAL.y}" font-family="${FONT}" font-size="${SERIAL.size}"
+               font-weight="700" fill="${SERIAL.color}" text-anchor="middle" letter-spacing="1">Serial: ${escapeXml(serial)}</text>`
+          : ""
+      }
 
       <!-- contact details on the bottom arcs -->
       ${bottomArcText(mobiles, MOBILE_ARC.radius, MOBILE_ARC.size, MOBILE_ARC.color)}

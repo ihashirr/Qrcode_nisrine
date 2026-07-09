@@ -14,18 +14,18 @@
     "ingredientsAr": "المكونات: طحين سميد جوز الهند سكر بيكنج بودر فستق"
   },
   "products": [
-    { "sku": "INT-M1001", "category": "Mix Sweet", "gtin": "0721688020981" },
-    { "sku": "INT-M1002", "category": "Mix Sweet", "gtin": "0721688020981" },
-    { "sku": "INT-M1003", "category": "Mix Sweet", "gtin": "0721688020981" },
-    { "sku": "INT-M1004", "category": "Mix Sweet", "gtin": "0721688020981" },
-    { "sku": "INT-M1005", "category": "Mix Sweet", "gtin": "0721688020981" },
-    { "sku": "INT-M1006", "category": "Mix Sweet", "gtin": "0721688020981" },
-    { "sku": "INT-M1007", "category": "Mix Sweet", "gtin": "0721688020981" },
-    { "sku": "INT-M1008", "category": "Mix Sweet", "gtin": "0721688020981" },
-    { "sku": "INT-M1009", "category": "Mix Sweet", "gtin": "0721688020981" },
-    { "sku": "INT-P1001", "category": "Pastries", "gtin": "0721688020998" },
-    { "sku": "INT-P1002", "category": "Pastries", "gtin": "0721688020998" },
-    { "sku": "INT-P1003", "category": "Pastries", "gtin": "0721688020998" },
-    { "sku": "INT-P1004", "category": "Pastries", "gtin": "0721688020998" }
+    { "sku": "INT-M1001", "category": "Mix Sweet", "gtin": "0721688020981", "serial": "001" },
+    { "sku": "INT-M1002", "category": "Mix Sweet", "gtin": "0721688020981", "serial": "002" },
+    { "sku": "INT-M1003", "category": "Mix Sweet", "gtin": "0721688020981", "serial": "003" },
+    { "sku": "INT-M1004", "category": "Mix Sweet", "gtin": "0721688020981", "serial": "004" },
+    { "sku": "INT-M1005", "category": "Mix Sweet", "gtin": "0721688020981", "serial": "005" },
+    { "sku": "INT-M1006", "category": "Mix Sweet", "gtin": "0721688020981", "serial": "006" },
+    { "sku": "INT-M1007", "category": "Mix Sweet", "gtin": "0721688020981", "serial": "007" },
+    { "sku": "INT-M1008", "category": "Mix Sweet", "gtin": "0721688020981", "serial": "008" },
+    { "sku": "INT-M1009", "category": "Mix Sweet", "gtin": "0721688020981", "serial": "009" },
+    { "sku": "INT-P1001", "category": "Pastries", "gtin": "0721688020998", "serial": "001" },
+    { "sku": "INT-P1002", "category": "Pastries", "gtin": "0721688020998", "serial": "002" },
+    { "sku": "INT-P1003", "category": "Pastries", "gtin": "0721688020998", "serial": "003" },
+    { "sku": "INT-P1004", "category": "Pastries", "gtin": "0721688020998", "serial": "004" }
   ]
 }

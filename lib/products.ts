@@ -18,6 +18,12 @@ export interface Product {
   category: string;
   /** The GTIN printed on the sticker, canonicalized to 13 digits. */
   gtin: string;
+  /**
+   * Per-item serial printed discreetly on the sticker (e.g. "001"). The GTIN
+   * identifies the product line; the serial distinguishes individual labels
+   * for internal inventory. Unique within a GTIN.
+   */
+  serial: string;
   /** Optional per-product ingredients override (falls back to defaults.ingredients). */
   ingredients?: string;
   /** Optional per-product Arabic ingredients override. */
@@ -99,6 +105,7 @@ function audit(data: ProductsFile): ProductsFile {
 
   const seenSkus = new Set<string>();
   const gtinCategory = new Map<string, string>();
+  const gtinSerials = new Map<string, Set<string>>(); // per-GTIN serial uniqueness
 
   for (const p of data.products ?? []) {
     if (typeof p.sku !== "string" || !p.sku.trim() || typeof p.category !== "string" || !p.category.trim()) {
@@ -126,6 +133,19 @@ function audit(data: ProductsFile): ProductsFile {
       );
     }
     gtinCategory.set(canonical, p.category);
+
+    // Per-item serial: required, and unique within its GTIN so GTIN + serial
+    // identifies exactly one label.
+    if (typeof p.serial !== "string" || !p.serial.trim()) {
+      throw new AuditError(`product ${p.sku} is missing a serial.`);
+    }
+    p.serial = p.serial.trim();
+    const serials = gtinSerials.get(canonical) ?? new Set<string>();
+    if (serials.has(p.serial)) {
+      throw new AuditError(`serial "${p.serial}" is used twice under GTIN ${canonical} — serials must be unique per product line.`);
+    }
+    serials.add(p.serial);
+    gtinSerials.set(canonical, serials);
   }
 
   return data;

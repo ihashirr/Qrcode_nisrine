@@ -33,20 +33,23 @@ the company's assigned GTIN allowlist (verbatim from the IBN *Certificate of GTI
 Assignment*, order UAE-1806) and the per-product assignments:
 
 ```json
-{ "sku": "INT-M1001", "category": "Mix Sweet", "gtin": "0721688020981" }
+{ "sku": "INT-M1001", "category": "Mix Sweet", "gtin": "0721688020981", "serial": "001" }
 ```
 
-- `sku` — internal identity, used for filenames and the registry log; never printed as a barcode
+- `sku` — internal identity, used for filenames/routes; never printed as a barcode
 - `gtin` — the registered number printed on the sticker as EAN-13
+- `serial` — a per-item number printed discreetly on the sticker (e.g. "001"); unique within
+  its GTIN, so **GTIN + serial identifies exactly one label** for internal inventory
 - `company.assignedGtins` — the allowlist: `0721688020981` (Mix Sweet) and
   `0721688020998` (Pastries, confirmed registered in the International Barcodes Database)
 
-One GTIN identifies one **product line**, not one sticker — all 9 Mix Sweet stickers
-correctly share the Mix Sweet GTIN, all 4 Pastries share the Pastries GTIN. Note the
-certificate assigns **two** GTINs (Quantity: 2): the "series" endpoints are the two numbers
-themselves. The 13-digit values between them mostly fail check-digit math and are not owned —
-never fabricate an in-between number. Products can override `ingredients` / `ingredientsAr`
-individually; otherwise the file-level `defaults` apply.
+**Two GTINs + per-item serial (retail-compliant).** A GTIN identifies one *product line*, not
+one unit — all 9 Mix Sweet stickers correctly share the Mix Sweet GTIN, all 4 Pastries share
+the Pastries GTIN, so a supermarket scans the correct registered product. The `serial` gives
+each of the 13 labels its own identity for your inventory without inventing GTINs you don't
+own. The certificate assigns **two** GTINs (Quantity: 2); the values between them mostly fail
+check-digit math and belong to other companies — never fabricate one. Products can override
+`ingredients` / `ingredientsAr` individually; otherwise the file-level `defaults` apply.
 
 ## Validation-First workflow
 
@@ -62,7 +65,7 @@ data can never deploy:
    and fabricated numbers); 12-digit UPC-A values are accepted and canonicalized to GTIN-13.
 4. **Allowlist** — every GTIN must appear in `company.assignedGtins` (the certificate).
 5. **Conflict detection** — the same GTIN assigned to two *different* categories aborts;
-   duplicate SKUs abort.
+   duplicate SKUs abort; a `serial` reused within the same GTIN aborts.
 
 **External verification** — the dashboard's preview lightbox has a **Verify ↗** link per
 sticker that opens the pre-filled International Barcodes Database search, so each number can
@@ -79,7 +82,8 @@ same position on all 13 stickers. Only the product name and barcode payload chan
 3. **Texts** — "Sweets & Bakery" tagline (green), dynamic product name (brown), Arabic +
    English ingredients lines, all centered with fixed coordinates.
 4. **Barcode** — rendered by bwip-js with the quiet zone baked in; EAN-13/UPC-A for numeric
-   GTINs, Code128 otherwise.
+   GTINs, Code128 otherwise. A discreet **"Serial: NNN"** is printed below it (outside the
+   barcode area) so each label is individually identifiable.
 5. **Contact arcs** — "Mob: +971 55 235 6655, +971 50 181 3507" and "Abu Dhabi - U.A.E"
    curved along the bottom rim. (Drawn as per-character positioned/rotated glyphs because
    librsvg's `<textPath>` is unsupported in this environment.)

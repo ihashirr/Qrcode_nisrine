@@ -23,6 +23,7 @@ export async function GET(_req: Request, { params }: { params: { sku: string } }
     categoryName: product.category,
     barcodeValue: product.gtin,
     company: getCompany(),
+    serial: product.serial,
     ingredients: product.ingredients,
     ingredientsAr: product.ingredientsAr,
   });
