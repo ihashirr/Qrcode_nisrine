@@ -1,0 +1,122 @@
+{
+  "categories": [
+    {
+      "name": "Mix Sweet",
+      "slug": "mix-sweet",
+      "count": 9
+    },
+    {
+      "name": "Pastries",
+      "slug": "pastries",
+      "count": 4
+    }
+  ],
+  "products": [
+    {
+      "sku": "INT-M1001",
+      "category": "Mix Sweet",
+      "gtin": "0721688020981",
+      "verifyUrl": "https://barcodesdatabase.org/?s=0721688020981",
+      "file": "int-m1001.png"
+    },
+    {
+      "sku": "INT-M1002",
+      "category": "Mix Sweet",
+      "gtin": "0721688020981",
+      "verifyUrl": "https://barcodesdatabase.org/?s=0721688020981",
+      "file": "int-m1002.png"
+    },
+    {
+      "sku": "INT-M1003",
+      "category": "Mix Sweet",
+      "gtin": "0721688020981",
+      "verifyUrl": "https://barcodesdatabase.org/?s=0721688020981",
+      "file": "int-m1003.png"
+    },
+    {
+      "sku": "INT-M1004",
+      "category": "Mix Sweet",
+      "gtin": "0721688020981",
+      "verifyUrl": "https://barcodesdatabase.org/?s=0721688020981",
+      "file": "int-m1004.png"
+    },
+    {
+      "sku": "INT-M1005",
+      "category": "Mix Sweet",
+      "gtin": "0721688020981",
+      "verifyUrl": "https://barcodesdatabase.org/?s=0721688020981",
+      "file": "int-m1005.png"
+    },
+    {
+      "sku": "INT-M1006",
+      "category": "Mix Sweet",
+      "gtin": "0721688020981",
+      "verifyUrl": "https://barcodesdatabase.org/?s=0721688020981",
+      "file": "int-m1006.png"
+    },
+    {
+      "sku": "INT-M1007",
+      "category": "Mix Sweet",
+      "gtin": "0721688020981",
+      "verifyUrl": "https://barcodesdatabase.org/?s=0721688020981",
+      "file": "int-m1007.png"
+    },
+    {
+      "sku": "INT-M1008",
+      "category": "Mix Sweet",
+      "gtin": "0721688020981",
+      "verifyUrl": "https://barcodesdatabase.org/?s=0721688020981",
+      "file": "int-m1008.png"
+    },
+    {
+      "sku": "INT-M1009",
+      "category": "Mix Sweet",
+      "gtin": "0721688020981",
+      "verifyUrl": "https://barcodesdatabase.org/?s=0721688020981",
+      "file": "int-m1009.png"
+    },
+    {
+      "sku": "INT-P1001",
+      "category": "Pastries",
+      "gtin": "0721688020998",
+      "verifyUrl": "https://barcodesdatabase.org/?s=0721688020998",
+      "file": "int-p1001.png"
+    },
+    {
+      "sku": "INT-P1002",
+      "category": "Pastries",
+      "gtin": "0721688020998",
+      "verifyUrl": "https://barcodesdatabase.org/?s=0721688020998",
+      "file": "int-p1002.png"
+    },
+    {
+      "sku": "INT-P1003",
+      "category": "Pastries",
+      "gtin": "0721688020998",
+      "verifyUrl": "https://barcodesdatabase.org/?s=0721688020998",
+      "file": "int-p1003.png"
+    },
+    {
+      "sku": "INT-P1004",
+      "category": "Pastries",
+      "gtin": "0721688020998",
+      "verifyUrl": "https://barcodesdatabase.org/?s=0721688020998",
+      "file": "int-p1004.png"
+    }
+  ],
+  "files": [
+    "int-m1001.png",
+    "int-m1002.png",
+    "int-m1003.png",
+    "int-m1004.png",
+    "int-m1005.png",
+    "int-m1006.png",
+    "int-m1007.png",
+    "int-m1008.png",
+    "int-m1009.png",
+    "int-p1001.png",
+    "int-p1002.png",
+    "int-p1003.png",
+    "int-p1004.png"
+  ]
+}

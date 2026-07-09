@@ -26,6 +26,8 @@ backend/          Fastify + TypeScript API and generation logic
   src/server.ts              Fastify entrypoint
 frontend/         Next.js + Tailwind + framer-motion "Control Room" dashboard
   app/page.tsx    the dashboard (generate, filter, preview, verify, print)
+  scripts/sync-assets.mjs   prebuild: products.json + stickers -> public/ (Vercel-ready)
+  public/         catalog.json + stickers/ served statically in gallery mode
 ```
 
 ## Data source: `products.json`
@@ -118,10 +120,35 @@ npm install
 npm run dev                    # Control Room dashboard on :3000
 ```
 
-The dashboard renders one **Generate <Category> Barcodes** button per category plus
-**Generate All**, shows an animated generation progress bar, filters the sticker grid by
-category, opens a full-size preview lightbox on click (Esc to close), gives a download
-link per sticker, and has a **Print** button.
+The dashboard has two modes, chosen by the `NEXT_PUBLIC_API_BASE` env var:
+
+- **Control-room mode** (`NEXT_PUBLIC_API_BASE=http://localhost:4000 npm run dev`) — talks to
+  the Fastify backend: live listing plus the per-category and **Generate All** buttons, with a
+  progress bar. Use this locally when you want to (re)generate stickers.
+- **Gallery mode** (no env var — the default, and how it deploys) — a fully static site served
+  from `frontend/public/catalog.json` + `frontend/public/stickers/`, with no backend. The
+  generate buttons are hidden; filter tabs, the preview lightbox (Esc to close), per-sticker
+  GTIN, **Verify ↗**, download, and **Print** all work.
+
+## Deploy to Vercel
+
+The site deploys as a **static Next.js app** — no server, because generation (sharp + the
+audit + disk writes) is a local/build-time concern and the 13 stickers are committed. A
+`prebuild` step (`frontend/scripts/sync-assets.mjs`) copies `products.json` + the stickers in
+`assets/output/` into `frontend/public/` (`catalog.json` + `stickers/`); those synced copies
+are also committed so the build works even when Vercel can't see the repo root.
+
+Because this is a monorepo, set the Vercel project's **Root Directory to `frontend`** (Project
+Settings → General → Root Directory). Vercel then auto-detects Next.js — no `vercel.json`
+needed. Push to the connected branch (or merge to your production branch) and it builds.
+
+To update the live stickers after editing `products.json` or the master assets:
+
+```bash
+cd backend && npm run generate     # regenerate assets/output/
+cd ../frontend && npm run sync      # refresh frontend/public/{catalog.json,stickers}
+git add -A && git commit && git push # Vercel redeploys
+```
 
 ## API
 

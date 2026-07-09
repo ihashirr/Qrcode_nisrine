@@ -3,7 +3,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:4000";
+// When NEXT_PUBLIC_API_BASE is set (local dev with the Fastify server) the app
+// is a live "control room": it lists from and generates via the backend. With
+// no API base — the default, and how it deploys on Vercel — it's a static
+// gallery served entirely from public/catalog.json + public/stickers/, with
+// no backend and the generate actions hidden.
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE;
+const hasBackend = Boolean(API_BASE);
+
+/** URL for a generated sticker, from the backend or the static public dir. */
+const assetUrl = (file: string) =>
+  hasBackend ? `${API_BASE}/assets/output/${file}` : `/stickers/${file}`;
 
 interface Category {
   name: string;
@@ -16,6 +26,12 @@ interface Product {
   category: string;
   gtin: string;
   verifyUrl: string;
+}
+
+interface Catalog {
+  categories: Category[];
+  products: Product[];
+  files: string[];
 }
 
 /** Extracts the backend's { error } message, falling back to a generic one. */
@@ -61,6 +77,18 @@ export default function ControlRoom() {
 
   const refresh = useCallback(async () => {
     try {
+      if (!hasBackend) {
+        // Static gallery: everything comes from the pre-built catalog.
+        const res = await fetch("/catalog.json", { cache: "no-store" });
+        if (!res.ok) throw new Error("catalog missing");
+        const catalog = (await res.json()) as Catalog;
+        setCategories(catalog.categories);
+        setProducts(catalog.products);
+        setFiles(catalog.files);
+        setError(null);
+        return;
+      }
+
       const [catRes, prodRes, fileRes] = await Promise.all([
         fetch(`${API_BASE}/api/categories`),
         fetch(`${API_BASE}/api/products`),
@@ -78,7 +106,11 @@ export default function ControlRoom() {
       setFiles(await fileRes.json());
       setError(null);
     } catch {
-      setError("Backend unreachable — start the Fastify server on :4000 (cd backend && npm run dev).");
+      setError(
+        hasBackend
+          ? "Backend unreachable — start the Fastify server on :4000 (cd backend && npm run dev)."
+          : "Could not load the sticker catalog."
+      );
     } finally {
       setLoading(false);
     }
@@ -159,15 +191,17 @@ export default function ControlRoom() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => generate(null, "total")}
-              disabled={busy !== null}
-              className="rounded-lg bg-yellow-400 px-4 py-2 text-xs font-bold uppercase tracking-wide text-neutral-900 shadow-sm transition-colors hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {busy === "all" ? "Generating…" : "Generate All"}
-            </motion.button>
+            {hasBackend && (
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => generate(null, "total")}
+                disabled={busy !== null}
+                className="rounded-lg bg-yellow-400 px-4 py-2 text-xs font-bold uppercase tracking-wide text-neutral-900 shadow-sm transition-colors hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {busy === "all" ? "Generating…" : "Generate All"}
+              </motion.button>
+            )}
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
@@ -214,21 +248,23 @@ export default function ControlRoom() {
                 <div className="mb-1 font-mono text-[11px] uppercase tracking-widest text-neutral-400">
                   {c.slug}
                 </div>
-                <div className="mb-4 flex items-baseline justify-between">
+                <div className={`flex items-baseline justify-between ${hasBackend ? "mb-4" : ""}`}>
                   <span className="text-lg font-bold">{c.name}</span>
                   <span className="rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-semibold text-yellow-800">
                     {c.count} units
                   </span>
                 </div>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => generate(c.slug, c.name)}
-                  disabled={busy !== null}
-                  className="w-full rounded-lg bg-neutral-900 px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-yellow-400 transition-colors hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {busy === c.slug ? "Generating…" : `Generate ${c.name} Barcodes`}
-                </motion.button>
+                {hasBackend && (
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => generate(c.slug, c.name)}
+                    disabled={busy !== null}
+                    className="w-full rounded-lg bg-neutral-900 px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-yellow-400 transition-colors hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {busy === c.slug ? "Generating…" : `Generate ${c.name} Barcodes`}
+                  </motion.button>
+                )}
               </motion.div>
             ))}
 
@@ -302,11 +338,21 @@ export default function ControlRoom() {
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-yellow-100 text-yellow-600">
             <BarcodeMark />
           </div>
-          <p className="text-sm font-semibold">No stickers generated yet</p>
+          <p className="text-sm font-semibold">No stickers to show</p>
           <p className="max-w-sm text-xs text-neutral-500">
-            Hit <span className="font-semibold text-neutral-700">Generate All</span> or a category
-            button above — the circular product stickers will appear here, ready to download or
-            print.
+            {hasBackend ? (
+              <>
+                Hit <span className="font-semibold text-neutral-700">Generate All</span> or a
+                category button above — the circular product stickers will appear here, ready to
+                download or print.
+              </>
+            ) : (
+              <>
+                Generate the stickers locally with{" "}
+                <span className="font-mono text-neutral-700">npm run generate</span> in{" "}
+                <span className="font-mono text-neutral-700">backend/</span>, then redeploy.
+              </>
+            )}
           </p>
         </motion.div>
       ) : (
@@ -331,7 +377,7 @@ export default function ControlRoom() {
                   aria-label={`Preview ${f}`}
                 >
                   <img
-                    src={`${API_BASE}/assets/output/${f}`}
+                    src={assetUrl(f)}
                     alt={f}
                     loading="lazy"
                     className="label-img aspect-square w-full"
@@ -346,7 +392,7 @@ export default function ControlRoom() {
                     </span>
                   </span>
                   <a
-                    href={`${API_BASE}/assets/output/${f}`}
+                    href={assetUrl(f)}
                     download={f}
                     className="shrink-0 rounded-md bg-yellow-400 px-2 py-1 text-[10px] font-bold uppercase text-neutral-900 opacity-0 transition-opacity duration-150 hover:bg-yellow-300 group-hover:opacity-100"
                   >
@@ -380,7 +426,7 @@ export default function ControlRoom() {
               className="max-h-full w-full max-w-xl overflow-hidden rounded-3xl bg-white shadow-2xl"
             >
               <img
-                src={`${API_BASE}/assets/output/${preview}`}
+                src={assetUrl(preview)}
                 alt={preview}
                 className="w-full"
                 style={{ objectFit: "contain" }}
@@ -405,7 +451,7 @@ export default function ControlRoom() {
                     </a>
                   )}
                   <a
-                    href={`${API_BASE}/assets/output/${preview}`}
+                    href={assetUrl(preview)}
                     download={preview}
                     className="rounded-lg bg-yellow-400 px-3 py-1.5 text-xs font-bold uppercase text-neutral-900 hover:bg-yellow-300"
                   >
